@@ -1,0 +1,27 @@
+# 환경 변수 (API 키 포함)
+.env
+
+# 출력물
+output/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Claude Code 로컬 설정
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Whisper 모델 캐시
+*.pt
+
+# 임시 파일
+*.tmp
+temp/

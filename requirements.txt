@@ -1,0 +1,15 @@
+pytubefix>=6.0.0
+openai-whisper>=20231117
+openai>=1.0.0
+fastapi>=0.104.0
+uvicorn>=0.24.0
+jinja2>=3.1.0
+python-multipart>=0.0.6
+pydub>=0.25.1
+python-dotenv>=1.0.0
+# MD 포맷팅용 (선택적, 사용하는 LLM만 설치하면 됨)
+google-generativeai>=0.3.0
+anthropic>=0.18.0
+# 키프레임 분석용 (선택적)
+opencv-python>=4.8.0
+Pillow>=10.0.0

@@ -1,0 +1,1448 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Script Extractor</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f0f0f;
+            color: #e1e1e1;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 28px;
+            margin-bottom: 8px;
+            color: #fff;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 40px;
+            font-size: 14px;
+        }
+
+        .card {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+
+        .form-group { margin-bottom: 16px; }
+
+        label {
+            display: block;
+            font-size: 13px;
+            color: #aaa;
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+
+        input[type="text"], select {
+            width: 100%;
+            padding: 10px 14px;
+            background: #0f0f0f;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input[type="text"]:focus, select:focus { border-color: #ff4444; }
+
+        .row { display: flex; gap: 12px; }
+        .row .form-group { flex: 1; }
+
+        .checkbox-group {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .checkbox-group label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            color: #e1e1e1;
+            font-size: 14px;
+        }
+
+        input[type="checkbox"] {
+            accent-color: #ff4444;
+            width: 16px;
+            height: 16px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background: #ff4444;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn:hover { background: #e03030; }
+        .btn:disabled {
+            background: #333;
+            color: #666;
+            cursor: not-allowed;
+        }
+
+        .mode-note {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        /* ========= 진행 상태 ========= */
+        #progress-section { display: none; }
+
+        .steps { display: flex; flex-direction: column; gap: 0; }
+
+        .step {
+            padding: 16px 0;
+            border-bottom: 1px solid #222;
+            color: #555;
+            transition: color 0.3s;
+        }
+
+        .step:last-child { border-bottom: none; }
+        .step.active { color: #fff; }
+        .step.done { color: #4caf50; }
+        .step.error { color: #ff4444; }
+
+        .step-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .step-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            flex-shrink: 0;
+            background: #222;
+            color: #555;
+            transition: all 0.3s;
+        }
+
+        .step.active .step-icon {
+            background: #ff4444;
+            color: #fff;
+        }
+
+        .step.done .step-icon {
+            background: #4caf50;
+            color: #fff;
+        }
+
+        .step-title { font-size: 14px; font-weight: 500; }
+
+        .step-percent {
+            margin-left: auto;
+            font-size: 13px;
+            font-weight: 600;
+            font-family: 'SF Mono', Menlo, monospace;
+            color: #555;
+            min-width: 40px;
+            text-align: right;
+        }
+
+        .step.active .step-percent { color: #ff4444; }
+        .step.done .step-percent { color: #4caf50; }
+
+        /* 프로그레스 바 */
+        .step-progress {
+            height: 4px;
+            background: #222;
+            border-radius: 2px;
+            margin: 10px 0 0 40px;
+            overflow: hidden;
+        }
+
+        .step-progress-bar {
+            height: 100%;
+            background: #ff4444;
+            border-radius: 2px;
+            width: 0%;
+            transition: width 0.4s ease;
+        }
+
+        .step.done .step-progress-bar {
+            background: #4caf50;
+            width: 100%;
+        }
+
+        .step-progress-bar.indeterminate {
+            width: 30%;
+            animation: indeterminate 1.5s ease-in-out infinite;
+        }
+
+        @keyframes indeterminate {
+            0% { margin-left: 0%; }
+            50% { margin-left: 70%; }
+            100% { margin-left: 0%; }
+        }
+
+        /* 상세 정보 */
+        .step-detail {
+            font-size: 12px;
+            color: #555;
+            margin: 6px 0 0 40px;
+            min-height: 16px;
+            transition: color 0.3s;
+        }
+
+        .step.active .step-detail { color: #999; }
+        .step.done .step-detail { color: #4caf5099; }
+
+        /* 타이머 + 팁 */
+        .progress-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 1px solid #222;
+        }
+
+        .elapsed {
+            font-size: 13px;
+            color: #888;
+            font-family: 'SF Mono', Menlo, monospace;
+        }
+
+        .tip {
+            font-size: 12px;
+            color: #666;
+            font-style: italic;
+            max-width: 60%;
+            text-align: right;
+            animation: fadeInOut 6s ease-in-out infinite;
+        }
+
+        @keyframes fadeInOut {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
+        }
+
+        /* ========= 결과 ========= */
+        #result-section { display: none; }
+
+        .result-banner {
+            background: #1a2e1a;
+            border: 1px solid #2d5a2d;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .result-banner-icon { font-size: 24px; flex-shrink: 0; }
+
+        .result-banner-text { flex: 1; }
+
+        .result-banner-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #4caf50;
+            margin-bottom: 4px;
+        }
+
+        .result-banner-info { font-size: 13px; color: #888; }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .result-title { font-size: 16px; font-weight: 600; color: #fff; }
+
+        .result-lang {
+            font-size: 12px;
+            background: #333;
+            color: #aaa;
+            padding: 4px 10px;
+            border-radius: 12px;
+        }
+
+        .result-text {
+            background: #0f0f0f;
+            border-radius: 8px;
+            padding: 16px;
+            font-size: 14px;
+            line-height: 1.7;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+            color: #ccc;
+        }
+
+        .download-buttons { display: flex; gap: 10px; margin-top: 16px; }
+
+        .btn-download {
+            flex: 1;
+            padding: 12px;
+            background: #1a3a1a;
+            border: 1px solid #2d5a2d;
+            border-radius: 8px;
+            color: #4caf50;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+
+        .btn-download:hover { background: #2d5a2d; color: #fff; }
+
+        .save-path {
+            font-size: 12px;
+            color: #666;
+            margin-top: 12px;
+            font-family: 'SF Mono', Menlo, monospace;
+            padding: 8px 12px;
+            background: #111;
+            border-radius: 6px;
+        }
+
+        .error-msg {
+            color: #ff4444;
+            padding: 12px;
+            font-size: 14px;
+            background: #2a1515;
+            border-radius: 8px;
+            border: 1px solid #4a2020;
+        }
+
+        .btn-new {
+            width: 100%;
+            padding: 10px;
+            background: transparent;
+            border: 1px solid #444;
+            border-radius: 8px;
+            color: #aaa;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 12px;
+            transition: all 0.2s;
+        }
+
+        .btn-new:hover { border-color: #888; color: #fff; }
+
+        /* ========= LLM 옵션 (MD/번역 공용) ========= */
+        .llm-options {
+            display: none;
+            margin-top: 12px;
+            padding: 16px;
+            background: #111;
+            border-radius: 8px;
+            border: 1px solid #2a2a2a;
+        }
+
+        .llm-options.visible { display: block; }
+
+        .llm-options .form-group { margin-bottom: 12px; }
+        .llm-options .form-group:last-child { margin-bottom: 0; }
+
+        .llm-select-desc {
+            font-size: 12px;
+            color: #888;
+            margin-top: 4px;
+        }
+
+        /* ========= 설정 버튼 ========= */
+        .llm-header { display: flex; gap: 8px; align-items: stretch; }
+        .llm-header > div { flex: 1; }
+
+        .btn-settings {
+            padding: 8px 14px;
+            background: #222;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: #aaa;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            flex-shrink: 0;
+            position: relative;
+        }
+        .btn-settings:hover { background: #333; color: #fff; border-color: #555; }
+        .settings-dot {
+            display: none;
+            position: absolute;
+            top: 4px; right: 4px;
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: #4caf50;
+        }
+        .settings-dot.active { display: block; }
+        .workflow-summary {
+            font-size: 12px;
+            color: #4caf50;
+            margin-top: 6px;
+            line-height: 1.5;
+        }
+
+        /* ========= 워크플로우 설정 모달 ========= */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+        .modal {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 16px;
+            padding: 28px;
+            width: 540px;
+            max-width: 90vw;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .modal-header h3 { color: #fff; font-size: 18px; margin: 0; }
+        .modal-close {
+            background: none;
+            border: none;
+            color: #666;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: all 0.2s;
+            line-height: 1;
+        }
+        .modal-close:hover { background: #333; color: #fff; }
+        .modal-desc {
+            color: #888;
+            font-size: 13px;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+        .modal-step-row {
+            border: 1px solid #2a2a2a;
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 12px;
+            background: #111;
+        }
+        .modal-step-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .modal-step-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #e1e1e1;
+        }
+        .modal-step-badge {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: #222;
+            color: #666;
+        }
+        .modal-step-badge.custom {
+            background: #1a3a1a;
+            color: #4caf50;
+        }
+        .modal-step-fields { display: flex; flex-direction: column; gap: 8px; }
+        .modal-step-fields select,
+        .modal-step-fields input[type="text"] {
+            width: 100%;
+            padding: 8px 12px;
+            background: #0f0f0f;
+            border: 1px solid #333;
+            border-radius: 6px;
+            color: #fff;
+            font-size: 13px;
+            outline: none;
+        }
+        .modal-step-fields select:focus,
+        .modal-step-fields input[type="text"]:focus { border-color: #ff4444; }
+        .modal-step-sub {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #222;
+        }
+        .modal-step-sub label {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 4px;
+        }
+        .modal-step-sub select,
+        .modal-step-sub input[type="text"] {
+            width: 100%;
+            padding: 6px 10px;
+            background: #0f0f0f;
+            border: 1px solid #333;
+            border-radius: 6px;
+            color: #fff;
+            font-size: 12px;
+            outline: none;
+            margin-bottom: 6px;
+        }
+        .modal-save-btn {
+            margin-top: 8px;
+            padding: 10px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>YouTube Script Extractor</h1>
+        <p class="subtitle">YouTube 영상의 음성을 텍스트로 변환합니다</p>
+
+        <div class="card" id="form-section">
+            <div class="form-group">
+                <label>YouTube URL</label>
+                <input type="text" id="url" placeholder="https://www.youtube.com/watch?v=..." onkeydown="if(event.key==='Enter') startTranscription()">
+            </div>
+
+            <div class="row">
+                <div class="form-group">
+                    <label>변환 모드</label>
+                    <select id="mode" onchange="toggleApiKey()">
+                        <option value="api">Whisper API (빠르고 정확)</option>
+                        <option value="local">로컬 Whisper (무료)</option>
+                    </select>
+                </div>
+                <div class="form-group" id="model-group" style="display:none;">
+                    <label>모델 크기</label>
+                    <select id="model_size">
+                        <option value="tiny">tiny (39MB, 가장 빠름)</option>
+                        <option value="base" selected>base (74MB, 균형)</option>
+                        <option value="small">small (244MB, 좋음)</option>
+                        <option value="medium">medium (769MB, 높음)</option>
+                        <option value="large">large (1.5GB, 최고)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group" id="api-key-group">
+                <label>OpenAI API Key</label>
+                <input type="text" id="api_key" placeholder="sk-...">
+                <p class="mode-note">서버에 OPENAI_API_KEY 환경변수가 설정되어 있으면 비워둬도 됩니다.</p>
+            </div>
+
+            <div class="form-group">
+                <label>출력 형식</label>
+                <div class="checkbox-group">
+                    <label><input type="checkbox" id="fmt_txt" checked> TXT (텍스트)</label>
+                    <label><input type="checkbox" id="fmt_srt" checked> SRT (자막)</label>
+                    <label><input type="checkbox" id="fmt_md" onchange="toggleLlmOptions()"> MD (AI 정리)</label>
+                    <label><input type="checkbox" id="fmt_translate" onchange="toggleLlmOptions()"> 번역</label>
+                    <label><input type="checkbox" id="fmt_keyframes" onchange="toggleLlmOptions()"> 키프레임 분석</label>
+                </div>
+            </div>
+
+            <!-- LLM 옵션 (MD/번역 공용) -->
+            <div class="llm-options" id="llm-options">
+                <div class="form-group">
+                    <label>기본 LLM <span style="color:#666; font-weight:400;">(모든 AI 단계에 적용)</span></label>
+                    <div class="llm-header">
+                        <div>
+                            <select id="llm-select" onchange="onLLMChange()">
+                                <option value="">로딩 중...</option>
+                            </select>
+                        </div>
+                        <button type="button" class="btn-settings" id="btn-settings" onclick="openSettingsModal()" title="워크플로우 설정">⚙<span class="settings-dot" id="settings-dot"></span></button>
+                    </div>
+                    <p class="llm-select-desc" id="llm-select-desc"></p>
+                    <p class="workflow-summary" id="workflow-summary" style="display:none;"></p>
+                </div>
+                <div class="form-group" id="md-api-key-group" style="display:none;">
+                    <label id="md-api-key-label">LLM API Key</label>
+                    <input type="text" id="md_api_key" placeholder="API 키 입력...">
+                    <p class="mode-note" id="md-api-key-note"></p>
+                </div>
+                <div class="form-group" id="md-ollama-group" style="display:none;">
+                    <label>Ollama 모델</label>
+                    <input type="text" id="md_ollama_model" value="llama3.2" placeholder="llama3.2">
+                    <p class="mode-note">ollama pull &lt;모델명&gt; 으로 먼저 다운로드 필요</p>
+                </div>
+                <div class="form-group" id="translate-lang-group" style="display:none;">
+                    <label>번역 언어</label>
+                    <select id="translate-lang">
+                        <option value="">로딩 중...</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>저장 경로</label>
+                <input type="text" id="output_dir" placeholder="./output" value="./output">
+                <p class="mode-note">비워두면 기본 경로(./output)에 저장됩니다. 절대 경로도 사용 가능합니다 (예: /Users/이름/Desktop)</p>
+            </div>
+
+            <button class="btn" id="submit-btn" onclick="startTranscription()">스크립트 추출 시작</button>
+        </div>
+
+        <!-- 진행 상태 -->
+        <div class="card" id="progress-section">
+            <div class="steps">
+                <div class="step" id="step-download" data-step="download">
+                    <div class="step-header">
+                        <div class="step-icon">1</div>
+                        <div class="step-title">오디오 다운로드</div>
+                        <div class="step-percent" id="pct-download"></div>
+                    </div>
+                    <div class="step-progress"><div class="step-progress-bar" id="bar-download"></div></div>
+                    <div class="step-detail" id="detail-download">YouTube에서 오디오를 추출합니다</div>
+                </div>
+                <div class="step" id="step-keyframe_extract" data-step="keyframe_extract" style="display:none;">
+                    <div class="step-header">
+                        <div class="step-icon">2</div>
+                        <div class="step-title">키프레임 추출</div>
+                        <div class="step-percent" id="pct-keyframe_extract"></div>
+                    </div>
+                    <div class="step-progress"><div class="step-progress-bar" id="bar-keyframe_extract"></div></div>
+                    <div class="step-detail" id="detail-keyframe_extract">영상에서 주요 장면을 추출합니다</div>
+                </div>
+                <div class="step" id="step-keyframe_analysis" data-step="keyframe_analysis" style="display:none;">
+                    <div class="step-header">
+                        <div class="step-icon">3</div>
+                        <div class="step-title">키프레임 분석</div>
+                        <div class="step-percent" id="pct-keyframe_analysis"></div>
+                    </div>
+                    <div class="step-progress"><div class="step-progress-bar" id="bar-keyframe_analysis"></div></div>
+                    <div class="step-detail" id="detail-keyframe_analysis">Vision AI로 화면을 분석합니다</div>
+                </div>
+                <div class="step" id="step-transcribe" data-step="transcribe">
+                    <div class="step-header">
+                        <div class="step-icon">2</div>
+                        <div class="step-title">음성 인식</div>
+                        <div class="step-percent" id="pct-transcribe"></div>
+                    </div>
+                    <div class="step-progress"><div class="step-progress-bar" id="bar-transcribe"></div></div>
+                    <div class="step-detail" id="detail-transcribe">Whisper로 음성을 텍스트로 변환합니다</div>
+                </div>
+                <div class="step" id="step-format" data-step="format" style="display:none;">
+                    <div class="step-header">
+                        <div class="step-icon">3</div>
+                        <div class="step-title">AI 마크다운 정리</div>
+                        <div class="step-percent" id="pct-format"></div>
+                    </div>
+                    <div class="step-progress"><div class="step-progress-bar" id="bar-format"></div></div>
+                    <div class="step-detail" id="detail-format">LLM으로 텍스트를 구조화합니다</div>
+                </div>
+                <div class="step" id="step-translate" data-step="translate" style="display:none;">
+                    <div class="step-header">
+                        <div class="step-icon">4</div>
+                        <div class="step-title">번역</div>
+                        <div class="step-percent" id="pct-translate"></div>
+                    </div>
+                    <div class="step-progress"><div class="step-progress-bar" id="bar-translate"></div></div>
+                    <div class="step-detail" id="detail-translate">선택한 언어로 번역합니다</div>
+                </div>
+                <div class="step" id="step-save" data-step="save">
+                    <div class="step-header">
+                        <div class="step-icon" id="icon-save">3</div>
+                        <div class="step-title">파일 저장</div>
+                        <div class="step-percent" id="pct-save"></div>
+                    </div>
+                    <div class="step-progress"><div class="step-progress-bar" id="bar-save"></div></div>
+                    <div class="step-detail" id="detail-save">결과 파일을 생성합니다</div>
+                </div>
+            </div>
+            <div class="progress-footer">
+                <div class="elapsed" id="elapsed"></div>
+                <div class="tip" id="tip"></div>
+            </div>
+        </div>
+
+        <!-- 결과 -->
+        <div class="card" id="result-section">
+            <div class="result-banner">
+                <div class="result-banner-icon">&#10003;</div>
+                <div class="result-banner-text">
+                    <div class="result-banner-title">스크립트 추출 완료</div>
+                    <div class="result-banner-info" id="result-info"></div>
+                </div>
+            </div>
+            <div class="result-header">
+                <span class="result-title" id="result-title"></span>
+                <span class="result-lang" id="result-lang"></span>
+            </div>
+            <div class="result-text" id="result-text"></div>
+            <div class="download-buttons" id="download-buttons"></div>
+            <div class="save-path" id="save-path"></div>
+            <button class="btn-new" onclick="resetForm()">새 영상 추출하기</button>
+        </div>
+
+        <!-- 에러 -->
+        <div class="card" id="error-section" style="display:none;">
+            <div class="error-msg" id="error-msg"></div>
+            <button class="btn-new" onclick="resetForm()">다시 시도하기</button>
+        </div>
+    </div>
+
+    <!-- 워크플로우 설정 모달 -->
+    <div class="modal-overlay" id="settings-modal" style="display:none;" onclick="if(event.target===this)closeSettingsModal()">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>워크플로우 설정</h3>
+                <button class="modal-close" onclick="closeSettingsModal()">&times;</button>
+            </div>
+            <p class="modal-desc">각 단계별로 다른 LLM을 지정할 수 있습니다.<br>비워두면 기본 LLM(<strong id="modal-global-llm-name" style="color:#e1e1e1;">—</strong>)을 사용합니다.</p>
+
+            <!-- MD 정리 -->
+            <div class="modal-step-row">
+                <div class="modal-step-label">
+                    <span class="modal-step-name">MD 정리</span>
+                    <span class="modal-step-badge" id="badge-format">기본 LLM</span>
+                </div>
+                <div class="modal-step-fields">
+                    <select id="modal-format-llm" onchange="onModalLLMChange('format')">
+                        <option value="">기본 LLM 사용</option>
+                    </select>
+                    <input type="text" id="modal-format-api-key" placeholder="API Key (비워두면 환경변수 사용)" style="display:none;">
+                </div>
+            </div>
+
+            <!-- 번역 -->
+            <div class="modal-step-row">
+                <div class="modal-step-label">
+                    <span class="modal-step-name">번역</span>
+                    <span class="modal-step-badge" id="badge-translate">기본 LLM</span>
+                </div>
+                <div class="modal-step-fields">
+                    <select id="modal-translate-llm" onchange="onModalLLMChange('translate')">
+                        <option value="">기본 LLM 사용</option>
+                    </select>
+                    <input type="text" id="modal-translate-api-key" placeholder="API Key (비워두면 환경변수 사용)" style="display:none;">
+                </div>
+            </div>
+
+            <!-- 키프레임 분석 -->
+            <div class="modal-step-row">
+                <div class="modal-step-label">
+                    <span class="modal-step-name">키프레임 분석</span>
+                    <span class="modal-step-badge" id="badge-keyframe">기본 LLM</span>
+                </div>
+                <div class="modal-step-fields">
+                    <select id="modal-keyframe-llm" onchange="onModalLLMChange('keyframe')">
+                        <option value="">기본 LLM 사용 (Vision 지원 필요)</option>
+                    </select>
+                    <input type="text" id="modal-keyframe-api-key" placeholder="API Key (비워두면 환경변수 사용)" style="display:none;">
+                </div>
+                <div class="modal-step-sub">
+                    <label>추출 방식</label>
+                    <select id="keyframe-method" onchange="onKeyframeMethodChange()">
+                        <option value="scene">장면 전환 감지 (추천)</option>
+                        <option value="interval">고정 간격</option>
+                    </select>
+                    <div id="keyframe-interval-group" style="display:none;">
+                        <label>간격 (초)</label>
+                        <input type="text" id="keyframe-interval" value="30" placeholder="30">
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn modal-save-btn" onclick="saveModalSettings()">설정 저장</button>
+        </div>
+    </div>
+
+    <script>
+        let timerInterval = null;
+        let startTime = null;
+        let tipInterval = null;
+        let selectedLLM = 'gpt-4o-mini';
+        let llmModels = [];
+        let languages = [];
+        let llmLoaded = false;
+        let langLoaded = false;
+        let visionModels = [];
+        let visionLoaded = false;
+
+        // 단계별 LLM 설정 (모달에서 관리)
+        let perStepConfig = {
+            format:    { llm: '', apiKey: '' },
+            translate: { llm: '', apiKey: '' },
+            keyframe:  { llm: '', apiKey: '', method: 'scene', interval: 30 },
+        };
+
+        const TIPS = [
+            "Whisper는 90개 이상의 언어를 자동으로 감지합니다",
+            "SRT 파일은 대부분의 동영상 플레이어에서 자막으로 사용할 수 있습니다",
+            "영상이 길수록 변환 시간이 오래 걸립니다",
+            "API 모드는 로컬 모드보다 보통 5~10배 빠릅니다",
+            "TXT 파일은 텍스트 편집기에서 바로 열 수 있습니다",
+            "추출된 스크립트는 ./output 폴더에 저장됩니다",
+            "로컬 모드는 인터넷 없이도 사용 가능합니다",
+            "Whisper API 비용은 1분당 약 $0.006입니다",
+            "MD 출력은 LLM이 텍스트를 깔끔하게 구조화합니다",
+            "Ollama는 로컬에서 무료로 LLM을 실행할 수 있습니다",
+            "번역 기능으로 원본과 번역본을 동시에 생성할 수 있습니다",
+            "키프레임 분석으로 발표 슬라이드나 화면 내용을 MD에 포함할 수 있습니다",
+            "워크플로우 설정에서 단계별로 다른 LLM을 지정할 수 있습니다",
+            "키프레임 분석에 Gemini Flash를 사용하면 무료입니다",
+        ];
+
+        // 다운로드 버튼 라벨 매핑
+        const FMT_LABELS = {
+            'txt': 'TXT',
+            'srt': 'SRT',
+            'md': 'MD',
+        };
+
+        let STEP_ORDER = ['download', 'transcribe', 'save'];
+
+        function getStepOrder() {
+            const useMd = document.getElementById('fmt_md').checked;
+            const useTranslate = document.getElementById('fmt_translate').checked;
+            const useKeyframes = document.getElementById('fmt_keyframes').checked;
+            const order = ['download'];
+            if (useKeyframes) {
+                order.push('keyframe_extract');
+                order.push('keyframe_analysis');
+            }
+            order.push('transcribe');
+            if (useMd) order.push('format');
+            if (useTranslate) order.push('translate');
+            order.push('save');
+            return order;
+        }
+
+        function needsLLM() {
+            return document.getElementById('fmt_md').checked ||
+                   document.getElementById('fmt_translate').checked ||
+                   document.getElementById('fmt_keyframes').checked;
+        }
+
+        function toggleApiKey() {
+            const mode = document.getElementById('mode').value;
+            document.getElementById('api-key-group').style.display = mode === 'api' ? '' : 'none';
+            document.getElementById('model-group').style.display = mode === 'local' ? '' : 'none';
+        }
+
+        function toggleLlmOptions() {
+            const opts = document.getElementById('llm-options');
+            const translateChecked = document.getElementById('fmt_translate').checked;
+            const keyframesChecked = document.getElementById('fmt_keyframes').checked;
+
+            if (needsLLM()) {
+                opts.classList.add('visible');
+                if (!llmLoaded) loadLLMModels();
+                if (translateChecked && !langLoaded) loadLanguages();
+                if (keyframesChecked && !visionLoaded) loadVisionModels();
+            } else {
+                opts.classList.remove('visible');
+            }
+
+            // 번역 언어 선택 표시/숨기기
+            document.getElementById('translate-lang-group').style.display =
+                translateChecked ? '' : 'none';
+        }
+
+        async function loadLLMModels() {
+            try {
+                const res = await fetch('/api/llm-models?sort=price');
+                const data = await res.json();
+                llmModels = data.models;
+                llmLoaded = true;
+                renderLLMDropdown();
+            } catch (e) {
+                console.error('LLM 모델 로딩 실패:', e);
+            }
+        }
+
+        async function loadLanguages() {
+            try {
+                const res = await fetch('/api/languages');
+                const data = await res.json();
+                languages = data.languages;
+                langLoaded = true;
+                renderLanguageDropdown();
+            } catch (e) {
+                console.error('언어 목록 로딩 실패:', e);
+            }
+        }
+
+        function renderLLMDropdown() {
+            const select = document.getElementById('llm-select');
+            select.innerHTML = '';
+            llmModels.forEach(model => {
+                const opt = document.createElement('option');
+                opt.value = model.id;
+                opt.textContent = model.version
+                    ? `${model.name}  [${model.version}]`
+                    : model.name;
+                if (model.id === selectedLLM) opt.selected = true;
+                select.appendChild(opt);
+            });
+            onLLMChange();
+        }
+
+        function renderLanguageDropdown() {
+            const select = document.getElementById('translate-lang');
+            select.innerHTML = '';
+            languages.forEach(lang => {
+                const opt = document.createElement('option');
+                opt.value = lang.code;
+                opt.textContent = `${lang.name} (${lang.code})`;
+                select.appendChild(opt);
+            });
+        }
+
+        function onLLMChange() {
+            const select = document.getElementById('llm-select');
+            selectedLLM = select.value;
+            const model = llmModels.find(m => m.id === selectedLLM);
+            if (!model) return;
+
+            // 설명 텍스트 업데이트
+            document.getElementById('llm-select-desc').textContent = model.description;
+
+            // API 키 / Ollama 모델 UI 업데이트
+            const keyGroup = document.getElementById('md-api-key-group');
+            const ollamaGroup = document.getElementById('md-ollama-group');
+
+            if (selectedLLM === 'ollama') {
+                keyGroup.style.display = 'none';
+                ollamaGroup.style.display = '';
+            } else if (model.needs_key) {
+                keyGroup.style.display = '';
+                ollamaGroup.style.display = 'none';
+                const envKey = model.env_key || '';
+                document.getElementById('md-api-key-label').textContent = model.name + ' API Key';
+                document.getElementById('md-api-key-note').textContent =
+                    envKey ? `서버에 ${envKey} 환경변수가 설정되어 있으면 비워둬도 됩니다.` : '';
+            } else {
+                keyGroup.style.display = 'none';
+                ollamaGroup.style.display = 'none';
+            }
+
+            // 워크플로우 요약 업데이트 (기본 LLM 변경 시 "기본 LLM 사용" 뱃지도 갱신)
+            updateWorkflowSummary();
+        }
+
+        function startTimer() {
+            startTime = Date.now();
+            timerInterval = setInterval(() => {
+                const sec = Math.floor((Date.now() - startTime) / 1000);
+                const min = Math.floor(sec / 60);
+                const s = sec % 60;
+                document.getElementById('elapsed').textContent =
+                    min > 0 ? `${min}분 ${s}초 경과` : `${s}초 경과`;
+            }, 1000);
+        }
+
+        function stopTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            if (tipInterval) clearInterval(tipInterval);
+        }
+
+        function startTips() {
+            let tipIdx = Math.floor(Math.random() * TIPS.length);
+            const tipEl = document.getElementById('tip');
+            tipEl.textContent = TIPS[tipIdx];
+            tipInterval = setInterval(() => {
+                tipIdx = (tipIdx + 1) % TIPS.length;
+                tipEl.style.opacity = '0';
+                setTimeout(() => {
+                    tipEl.textContent = TIPS[tipIdx];
+                    tipEl.style.opacity = '';
+                }, 300);
+            }, 6000);
+        }
+
+        function updateStep(step, percent, detail) {
+            const stepEl = document.getElementById('step-' + step);
+            const barEl = document.getElementById('bar-' + step);
+            const pctEl = document.getElementById('pct-' + step);
+            const detailEl = document.getElementById('detail-' + step);
+
+            if (!stepEl) return;
+
+            // 현재 스텝을 active로
+            const stepIdx = STEP_ORDER.indexOf(step);
+            STEP_ORDER.forEach((s, i) => {
+                const el = document.getElementById('step-' + s);
+                if (!el) return;
+                const icon = el.querySelector('.step-icon');
+                if (i < stepIdx) {
+                    el.className = 'step done';
+                    icon.innerHTML = '&#10003;';
+                } else if (i === stepIdx) {
+                    el.className = 'step active';
+                    icon.textContent = String(i + 1);
+                }
+            });
+
+            // 프로그레스 바
+            if (percent < 0) {
+                barEl.className = 'step-progress-bar indeterminate';
+                barEl.style.width = '';
+                pctEl.textContent = '';
+            } else {
+                barEl.className = 'step-progress-bar';
+                barEl.style.width = percent + '%';
+                pctEl.textContent = percent + '%';
+            }
+
+            if (detail) {
+                detailEl.textContent = detail;
+            }
+
+            if (percent >= 100) {
+                stepEl.className = 'step done';
+                stepEl.querySelector('.step-icon').innerHTML = '&#10003;';
+                pctEl.textContent = '100%';
+            }
+        }
+
+        function setAllStepsDone() {
+            STEP_ORDER.forEach(step => {
+                const el = document.getElementById('step-' + step);
+                if (!el) return;
+                el.className = 'step done';
+                el.querySelector('.step-icon').innerHTML = '&#10003;';
+                document.getElementById('bar-' + step).style.width = '100%';
+                document.getElementById('bar-' + step).className = 'step-progress-bar';
+                document.getElementById('pct-' + step).textContent = '100%';
+            });
+        }
+
+        function resetForm() {
+            document.getElementById('form-section').style.display = 'block';
+            document.getElementById('progress-section').style.display = 'none';
+            document.getElementById('result-section').style.display = 'none';
+            document.getElementById('error-section').style.display = 'none';
+            document.getElementById('submit-btn').disabled = false;
+            document.getElementById('submit-btn').textContent = '스크립트 추출 시작';
+            stopTimer();
+            document.getElementById('elapsed').textContent = '';
+            document.getElementById('tip').textContent = '';
+
+            // 선택적 스텝 숨기기
+            document.getElementById('step-format').style.display = 'none';
+            document.getElementById('step-translate').style.display = 'none';
+            document.getElementById('step-keyframe_extract').style.display = 'none';
+            document.getElementById('step-keyframe_analysis').style.display = 'none';
+
+            const allSteps = ['download', 'keyframe_extract', 'keyframe_analysis', 'transcribe', 'format', 'translate', 'save'];
+            allSteps.forEach((step, i) => {
+                const el = document.getElementById('step-' + step);
+                if (!el) return;
+                el.className = 'step';
+                el.querySelector('.step-icon').textContent = String(i + 1);
+                document.getElementById('bar-' + step).style.width = '0%';
+                document.getElementById('bar-' + step).className = 'step-progress-bar';
+                document.getElementById('pct-' + step).textContent = '';
+            });
+            document.getElementById('detail-download').textContent = 'YouTube에서 오디오를 추출합니다';
+            document.getElementById('detail-keyframe_extract').textContent = '영상에서 주요 장면을 추출합니다';
+            document.getElementById('detail-keyframe_analysis').textContent = 'Vision AI로 화면을 분석합니다';
+            document.getElementById('detail-transcribe').textContent = 'Whisper로 음성을 텍스트로 변환합니다';
+            document.getElementById('detail-format').textContent = 'LLM으로 텍스트를 구조화합니다';
+            document.getElementById('detail-translate').textContent = '선택한 언어로 번역합니다';
+            document.getElementById('detail-save').textContent = '결과 파일을 생성합니다';
+        }
+
+        function getDownloadLabel(fmt) {
+            // txt_ko → "TXT (한국어)", md_zhcn → "MD (中文(简体))"
+            if (fmt.includes('_')) {
+                const parts = fmt.split('_');
+                const baseFmt = parts[0].toUpperCase();
+                const langCode = parts.slice(1).join('_');
+                // 언어 코드를 원래 형태로 복원 시도 (zhcn → zh-CN 등)
+                const langEntry = languages.find(l =>
+                    l.code.replace('-', '').toLowerCase() === langCode.toLowerCase()
+                );
+                const langName = langEntry ? langEntry.name : langCode.toUpperCase();
+                return `${baseFmt} (${langName})`;
+            }
+            return (FMT_LABELS[fmt] || fmt.toUpperCase());
+        }
+
+        async function startTranscription() {
+            const url = document.getElementById('url').value.trim();
+            if (!url) { alert('YouTube URL을 입력해주세요.'); return; }
+
+            const mode = document.getElementById('mode').value;
+            const apiKey = document.getElementById('api_key').value.trim();
+            const modelSize = document.getElementById('model_size').value;
+            const outputDir = document.getElementById('output_dir').value.trim() || './output';
+            const formats = [];
+            if (document.getElementById('fmt_txt').checked) formats.push('txt');
+            if (document.getElementById('fmt_srt').checked) formats.push('srt');
+            if (document.getElementById('fmt_md').checked) formats.push('md');
+
+            const useTranslate = document.getElementById('fmt_translate').checked;
+            const translateLang = useTranslate ? document.getElementById('translate-lang').value : '';
+            const enableKeyframes = document.getElementById('fmt_keyframes').checked;
+
+            if (formats.length === 0 && !useTranslate) {
+                alert('출력 형식을 하나 이상 선택해주세요.');
+                return;
+            }
+
+            // LLM 파라미터 (MD 또는 번역 사용 시)
+            const useLlm = needsLLM();
+            const mdLlm = useLlm ? selectedLLM : '';
+            const mdApiKey = useLlm ? document.getElementById('md_api_key').value.trim() : '';
+            const mdOllamaModel = useLlm ? document.getElementById('md_ollama_model').value.trim() || 'llama3.2' : 'llama3.2';
+
+            // STEP_ORDER를 동적으로 설정
+            STEP_ORDER = getStepOrder();
+
+            // 선택적 스텝 표시/숨기기 + 아이콘 번호 조정
+            const formatStep = document.getElementById('step-format');
+            const translateStep = document.getElementById('step-translate');
+            const keyExtStep = document.getElementById('step-keyframe_extract');
+            const keyAnalStep = document.getElementById('step-keyframe_analysis');
+            const useMd = formats.includes('md');
+
+            formatStep.style.display = useMd ? '' : 'none';
+            translateStep.style.display = useTranslate ? '' : 'none';
+            keyExtStep.style.display = enableKeyframes ? '' : 'none';
+            keyAnalStep.style.display = enableKeyframes ? '' : 'none';
+
+            // 스텝 번호 재배정
+            STEP_ORDER.forEach((s, i) => {
+                const el = document.getElementById('step-' + s);
+                if (el) el.querySelector('.step-icon').textContent = String(i + 1);
+            });
+
+            const btn = document.getElementById('submit-btn');
+            btn.disabled = true;
+            btn.textContent = '처리 중...';
+
+            document.getElementById('form-section').style.display = 'none';
+            document.getElementById('progress-section').style.display = 'block';
+            document.getElementById('result-section').style.display = 'none';
+            document.getElementById('error-section').style.display = 'none';
+
+            startTimer();
+            startTips();
+
+            try {
+                const res = await fetch('/api/transcribe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        url, mode, api_key: apiKey, model_size: modelSize,
+                        formats, output_dir: outputDir,
+                        md_llm: mdLlm, md_api_key: mdApiKey, md_ollama_model: mdOllamaModel,
+                        translate_lang: translateLang,
+                        // Per-step LLM overrides (모달 설정)
+                        format_llm: perStepConfig.format.llm,
+                        format_api_key: perStepConfig.format.apiKey,
+                        translate_llm: perStepConfig.translate.llm,
+                        translate_api_key: perStepConfig.translate.apiKey,
+                        keyframe_llm: perStepConfig.keyframe.llm,
+                        keyframe_api_key: perStepConfig.keyframe.apiKey,
+                        // 키프레임 옵션
+                        enable_keyframes: enableKeyframes,
+                        keyframe_method: perStepConfig.keyframe.method,
+                        keyframe_interval: parseInt(perStepConfig.keyframe.interval) || 30,
+                    }),
+                });
+                const data = await res.json();
+
+                if (data.error) {
+                    showError(data.error);
+                    return;
+                }
+
+                const jobId = data.job_id;
+                const eventSource = new EventSource(`/api/stream/${jobId}`);
+
+                eventSource.onmessage = (event) => {
+                    const msg = JSON.parse(event.data);
+
+                    if (msg.type === 'progress') {
+                        if (msg.step && msg.percent !== undefined) {
+                            updateStep(msg.step, msg.percent, msg.detail || '');
+                        }
+                    } else if (msg.type === 'completed') {
+                        eventSource.close();
+                        stopTimer();
+                        setAllStepsDone();
+                        setTimeout(() => showResult(msg.result), 500);
+                    } else if (msg.type === 'error') {
+                        eventSource.close();
+                        stopTimer();
+                        showError(msg.message);
+                    }
+                };
+
+                eventSource.onerror = () => {
+                    eventSource.close();
+                    stopTimer();
+                    showError('서버 연결이 끊어졌습니다. 서버가 실행 중인지 확인해주세요.');
+                };
+            } catch (err) {
+                stopTimer();
+                showError(`요청 실패: ${err.message}`);
+            }
+        }
+
+        function showError(message) {
+            document.getElementById('progress-section').style.display = 'none';
+            document.getElementById('error-section').style.display = 'block';
+            document.getElementById('error-msg').textContent = message;
+        }
+
+        function showResult(result) {
+            document.getElementById('progress-section').style.display = 'none';
+            document.getElementById('result-section').style.display = 'block';
+
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const min = Math.floor(elapsed / 60);
+            const sec = elapsed % 60;
+            const timeStr = min > 0 ? `${min}분 ${sec}초` : `${sec}초`;
+
+            document.getElementById('result-info').textContent =
+                `감지 언어: ${result.language} | 소요 시간: ${timeStr}`;
+            document.getElementById('result-title').textContent = result.title;
+            document.getElementById('result-lang').textContent = result.language;
+            document.getElementById('result-text').textContent = result.text;
+
+            const downloadBtns = document.getElementById('download-buttons');
+            downloadBtns.innerHTML = '';
+            const filenames = [];
+            const dirParam = result.output_dir_raw ? `?dir=${encodeURIComponent(result.output_dir_raw)}` : '';
+            for (const [fmt, filename] of Object.entries(result.files)) {
+                filenames.push(filename);
+                const a = document.createElement('a');
+                a.href = `/api/download/${encodeURIComponent(filename)}${dirParam}`;
+                a.className = 'btn-download';
+                a.download = filename;
+                a.textContent = `${getDownloadLabel(fmt)} 다운로드`;
+                downloadBtns.appendChild(a);
+            }
+
+            const dir = result.output_dir || './output';
+            document.getElementById('save-path').textContent =
+                '저장 위치: ' + filenames.map(f => dir + '/' + f).join(', ');
+        }
+        // ========= Vision 모델 로딩 =========
+        async function loadVisionModels() {
+            try {
+                const res = await fetch('/api/vision-models?sort=price');
+                const data = await res.json();
+                visionModels = data.models;
+                visionLoaded = true;
+            } catch (e) {
+                console.error('Vision 모델 로딩 실패:', e);
+            }
+        }
+
+        // ========= 워크플로우 설정 모달 =========
+        function openSettingsModal() {
+            // 모달 열기 전 모델 데이터 로딩 확인
+            if (!llmLoaded) loadLLMModels().then(() => populateModalDropdowns());
+            if (!visionLoaded) loadVisionModels().then(() => populateModalDropdowns());
+            populateModalDropdowns();
+            restoreModalFromConfig();
+            // 기본 LLM 이름 표시
+            const globalModel = llmModels.find(m => m.id === selectedLLM);
+            document.getElementById('modal-global-llm-name').textContent =
+                globalModel ? globalModel.name : selectedLLM;
+            document.getElementById('settings-modal').style.display = 'flex';
+        }
+
+        function closeSettingsModal() {
+            document.getElementById('settings-modal').style.display = 'none';
+        }
+
+        function populateModalDropdowns() {
+            const globalModel = llmModels.find(m => m.id === selectedLLM);
+            const globalName = globalModel ? globalModel.name : '기본 LLM';
+
+            // MD 정리 / 번역 드롭다운 (전체 LLM)
+            ['format', 'translate'].forEach(step => {
+                const select = document.getElementById(`modal-${step}-llm`);
+                const currentVal = select.value;
+                select.innerHTML = `<option value="">기본 LLM 사용 (${globalName})</option>`;
+                llmModels.forEach(model => {
+                    const opt = document.createElement('option');
+                    opt.value = model.id;
+                    opt.textContent = model.version
+                        ? `${model.name}  [${model.version}]`
+                        : model.name;
+                    select.appendChild(opt);
+                });
+                select.value = currentVal || '';
+            });
+
+            // 키프레임 드롭다운 (Vision 지원 모델만)
+            const kfSelect = document.getElementById('modal-keyframe-llm');
+            const kfVal = kfSelect.value;
+            const isGlobalVision = globalModel && globalModel.supports_vision !== false;
+            kfSelect.innerHTML = isGlobalVision
+                ? `<option value="">기본 LLM 사용 (${globalName})</option>`
+                : `<option value="">선택 필요 (기본 LLM이 Vision 미지원)</option>`;
+            visionModels.forEach(model => {
+                const opt = document.createElement('option');
+                opt.value = model.id;
+                opt.textContent = model.version
+                    ? `${model.name}  [${model.version}]`
+                    : model.name;
+                kfSelect.appendChild(opt);
+            });
+            kfSelect.value = kfVal || '';
+
+            updateModalBadges();
+        }
+
+        function restoreModalFromConfig() {
+            document.getElementById('modal-format-llm').value = perStepConfig.format.llm;
+            document.getElementById('modal-format-api-key').value = perStepConfig.format.apiKey;
+            document.getElementById('modal-translate-llm').value = perStepConfig.translate.llm;
+            document.getElementById('modal-translate-api-key').value = perStepConfig.translate.apiKey;
+            document.getElementById('modal-keyframe-llm').value = perStepConfig.keyframe.llm;
+            document.getElementById('modal-keyframe-api-key').value = perStepConfig.keyframe.apiKey;
+            document.getElementById('keyframe-method').value = perStepConfig.keyframe.method;
+            document.getElementById('keyframe-interval').value = perStepConfig.keyframe.interval;
+
+            onKeyframeMethodChange();
+            ['format', 'translate', 'keyframe'].forEach(s => onModalLLMChange(s));
+            updateModalBadges();
+        }
+
+        function onModalLLMChange(step) {
+            const select = document.getElementById(`modal-${step}-llm`);
+            const apiKeyInput = document.getElementById(`modal-${step}-api-key`);
+            const val = select.value;
+
+            if (val && val !== 'ollama') {
+                // 선택한 모델의 needs_key 확인
+                const allModels = step === 'keyframe' ? visionModels : llmModels;
+                const model = allModels.find(m => m.id === val);
+                if (model && model.needs_key) {
+                    apiKeyInput.style.display = '';
+                    apiKeyInput.placeholder = model.env_key
+                        ? `API Key (${model.env_key} 환경변수가 있으면 생략 가능)`
+                        : 'API Key 입력...';
+                } else {
+                    apiKeyInput.style.display = 'none';
+                }
+            } else {
+                apiKeyInput.style.display = 'none';
+            }
+            updateModalBadges();
+        }
+
+        function updateModalBadges() {
+            const globalModel = llmModels.find(m => m.id === selectedLLM);
+            const globalName = globalModel ? globalModel.name : '기본';
+
+            ['format', 'translate', 'keyframe'].forEach(step => {
+                const select = document.getElementById(`modal-${step}-llm`);
+                const badge = document.getElementById(`badge-${step}`);
+                if (select.value) {
+                    const allModels = step === 'keyframe' ? visionModels : llmModels;
+                    const model = allModels.find(m => m.id === select.value);
+                    badge.textContent = model ? model.name : select.value;
+                    badge.className = 'modal-step-badge custom';
+                } else {
+                    badge.textContent = globalName;
+                    badge.className = 'modal-step-badge';
+                }
+            });
+        }
+
+        function onKeyframeMethodChange() {
+            const method = document.getElementById('keyframe-method').value;
+            document.getElementById('keyframe-interval-group').style.display =
+                method === 'interval' ? '' : 'none';
+        }
+
+        function saveModalSettings() {
+            perStepConfig.format.llm = document.getElementById('modal-format-llm').value;
+            perStepConfig.format.apiKey = document.getElementById('modal-format-api-key').value.trim();
+            perStepConfig.translate.llm = document.getElementById('modal-translate-llm').value;
+            perStepConfig.translate.apiKey = document.getElementById('modal-translate-api-key').value.trim();
+            perStepConfig.keyframe.llm = document.getElementById('modal-keyframe-llm').value;
+            perStepConfig.keyframe.apiKey = document.getElementById('modal-keyframe-api-key').value.trim();
+            perStepConfig.keyframe.method = document.getElementById('keyframe-method').value;
+            perStepConfig.keyframe.interval = parseInt(document.getElementById('keyframe-interval').value) || 30;
+
+            updateWorkflowSummary();
+            closeSettingsModal();
+        }
+
+        function updateWorkflowSummary() {
+            const dot = document.getElementById('settings-dot');
+            const summary = document.getElementById('workflow-summary');
+
+            // 오버라이드가 있는지 확인
+            const overrides = [];
+            const getModelName = (id, models) => {
+                const m = models.find(x => x.id === id);
+                return m ? m.name : id;
+            };
+
+            if (perStepConfig.format.llm) {
+                overrides.push(`MD정리 → ${getModelName(perStepConfig.format.llm, llmModels)}`);
+            }
+            if (perStepConfig.translate.llm) {
+                overrides.push(`번역 → ${getModelName(perStepConfig.translate.llm, llmModels)}`);
+            }
+            if (perStepConfig.keyframe.llm) {
+                overrides.push(`키프레임 → ${getModelName(perStepConfig.keyframe.llm, visionModels)}`);
+            }
+
+            if (overrides.length > 0) {
+                dot.className = 'settings-dot active';
+                summary.style.display = '';
+                summary.textContent = '⚙ 단계별 설정: ' + overrides.join(' | ');
+            } else {
+                dot.className = 'settings-dot';
+                summary.style.display = 'none';
+                summary.textContent = '';
+            }
+        }
+    </script>
+</body>
+</html>

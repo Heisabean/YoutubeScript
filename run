@@ -1,0 +1,68 @@
+#!/bin/bash
+# YouTube Script Extractor 실행 스크립트
+
+DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$DIR"
+
+# 첫 실행: .env 파일이 없으면 자동 설정
+if [ ! -f .env ]; then
+    echo "=== YouTube Script Extractor 초기 설정 ==="
+    echo ""
+
+    read -p "OpenAI API Key를 입력하세요 (sk-...): " api_key
+    if [ -n "$api_key" ]; then
+        cat > .env << EOF
+OPENAI_API_KEY=$api_key
+DEFAULT_MODE=api
+DEFAULT_MODEL=base
+PORT=8000
+EOF
+        echo ""
+        echo ".env 파일이 생성되었습니다."
+    else
+        cp .env.example .env
+        echo ".env.example을 복사했습니다. 나중에 .env 파일을 직접 수정해주세요."
+    fi
+    echo ""
+fi
+
+# ffmpeg 체크
+if ! command -v ffmpeg &>/dev/null; then
+    echo "ffmpeg이 필요합니다. 설치합니다..."
+    brew install ffmpeg || { echo "ffmpeg 설치 실패. 'brew install ffmpeg'을 직접 실행해주세요."; exit 1; }
+    echo ""
+fi
+
+# Python 의존성 체크
+if ! python3 -c "import yt_dlp" 2>/dev/null; then
+    echo "Python 의존성을 설치합니다..."
+    python3 -m pip install -r requirements.txt || { echo "설치 실패. python3와 pip이 설치되어 있는지 확인해주세요."; exit 1; }
+    echo ""
+fi
+
+# 실행 모드 선택
+case "${1:-}" in
+    web|w)
+        echo "웹 서버를 시작합니다..."
+        python3 web.py
+        ;;
+    "")
+        # URL 없이 실행하면 웹 서버
+        echo "웹 서버를 시작합니다..."
+        python3 web.py
+        ;;
+    http*|www.*)
+        # URL이 주어지면 CLI 모드
+        python3 cli.py "$@"
+        ;;
+    *)
+        echo "사용법:"
+        echo "  ./run                       웹 서버 시작"
+        echo "  ./run web                   웹 서버 시작"
+        echo "  ./run <YouTube URL>         CLI로 스크립트 추출"
+        echo ""
+        echo "CLI 옵션:"
+        echo "  ./run <URL> --mode local    로컬 Whisper 사용"
+        echo "  ./run <URL> --format srt    SRT만 생성"
+        ;;
+esac
