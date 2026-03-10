@@ -794,7 +794,7 @@
         let timerInterval = null;
         let startTime = null;
         let tipInterval = null;
-        let selectedLLM = 'gpt-4o-mini';
+        let selectedLLM = 'gemini-flash-lite';
         let llmModels = [];
         let languages = [];
         let llmLoaded = false;
@@ -1194,32 +1194,44 @@
                 }
 
                 const jobId = data.job_id;
-                const eventSource = new EventSource(`/api/stream/${jobId}`);
+                let pollSeen = 0;
 
-                eventSource.onmessage = (event) => {
-                    const msg = JSON.parse(event.data);
+                const pollInterval = setInterval(async () => {
+                    try {
+                        const res = await fetch(`/api/status/${jobId}`);
+                        const job = await res.json();
 
-                    if (msg.type === 'progress') {
-                        if (msg.step && msg.percent !== undefined) {
-                            updateStep(msg.step, msg.percent, msg.detail || '');
+                        if (job.error && !job.progress) {
+                            clearInterval(pollInterval);
+                            stopTimer();
+                            showError(job.error);
+                            return;
                         }
-                    } else if (msg.type === 'completed') {
-                        eventSource.close();
-                        stopTimer();
-                        setAllStepsDone();
-                        setTimeout(() => showResult(msg.result), 500);
-                    } else if (msg.type === 'error') {
-                        eventSource.close();
-                        stopTimer();
-                        showError(msg.message);
-                    }
-                };
 
-                eventSource.onerror = () => {
-                    eventSource.close();
-                    stopTimer();
-                    showError('서버 연결이 끊어졌습니다. 서버가 실행 중인지 확인해주세요.');
-                };
+                        while (pollSeen < job.progress.length) {
+                            const msg = job.progress[pollSeen];
+                            if (msg.step && msg.percent !== undefined) {
+                                updateStep(msg.step, msg.percent, msg.detail || '');
+                            }
+                            pollSeen++;
+                        }
+
+                        if (job.status === 'completed') {
+                            clearInterval(pollInterval);
+                            stopTimer();
+                            setAllStepsDone();
+                            setTimeout(() => showResult(job.result), 500);
+                        } else if (job.status === 'error') {
+                            clearInterval(pollInterval);
+                            stopTimer();
+                            showError(job.error);
+                        }
+                    } catch (err) {
+                        clearInterval(pollInterval);
+                        stopTimer();
+                        showError('서버 연결이 끊어졌습니다. 서버가 실행 중인지 확인해주세요.');
+                    }
+                }, 1000);
             } catch (err) {
                 stopTimer();
                 showError(`요청 실패: ${err.message}`);

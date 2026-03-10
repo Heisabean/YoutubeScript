@@ -587,7 +587,7 @@ def _truncate_text(text: str, max_chars: int = 100000) -> tuple:
 def format_as_markdown(
     text: str,
     title: str,
-    llm_provider: str = "gpt-4o-mini",
+    llm_provider: str = "gemini-flash-lite",
     api_key: Optional[str] = None,
     ollama_model: str = "llama3.2",
     on_progress: Optional[Callable] = None,
@@ -646,7 +646,7 @@ def format_as_markdown(
 def translate_text(
     text: str,
     target_lang: str,
-    llm_provider: str = "gpt-4o-mini",
+    llm_provider: str = "gemini-flash-lite",
     api_key: Optional[str] = None,
     ollama_model: str = "llama3.2",
     on_progress: Optional[Callable] = None,
