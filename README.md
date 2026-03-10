@@ -1,3 +1,12 @@
+---
+title: YouTube Script Extractor
+emoji: 🎬
+colorFrom: red
+colorTo: yellow
+sdk: docker
+app_port: 7860
+---
+
 # 🎬 YouTube Script Extractor
 
 YouTube 영상에서 스크립트를 추출하고, AI로 깔끔하게 정리하는 도구입니다.
